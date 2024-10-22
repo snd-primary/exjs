@@ -214,7 +214,7 @@ async function writeMultipleScreensToExcel(
 					row.styleDefinition,
 				]);
 
-				excelRow.height = 25;
+				excelRow.height = 18;
 
 				for (const cell of excelRow._cells) {
 					if (!cell) continue;
