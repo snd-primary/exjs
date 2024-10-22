@@ -1,49 +1,52 @@
 import ExcelJS from "exceljs";
 
-const data = {
-	node: [
-		{
-			serial: 1,
-			tagName: "div",
-			id: "hogeId",
-			class: ["hogeClass1", "hogeClass2"],
-			style: {
-				hogeClass1:
-					".hogeClass1 {display: block; position: absolute} .hogeClass1:hover { background: red;}",
-				hogeClass2:
-					".hogeClass2 {display: block; position:relative} .hogeClass2::before { position: aboslute; background: red;}",
+const screenDataList = [
+	{
+		node: [
+			{
+				serial: 1,
+				tagName: "div",
+				id: "screen1Id",
+				class: ["screen1Class1"],
+				style: {
+					screen1Class1: ".screen1Class1 {display: block; position: absolute}",
+				},
+				size: { x: 500, y: 500 },
+				position: { x: 0, y: 0 },
 			},
-			size: {
-				x: 500,
-				y: 500,
+		],
+	},
+	{
+		node: [
+			{
+				serial: 1,
+				tagName: "div",
+				id: "screen2Id",
+				class: ["screen2Class1"],
+				style: {
+					screen2Class1: ".screen2Class1 {display: flex; position: relative}",
+				},
+				size: { x: 600, y: 400 },
+				position: { x: 10, y: 20 },
 			},
-			position: {
-				x: 0,
-				y: 0,
+		],
+	},
+	{
+		node: [
+			{
+				serial: 1,
+				tagName: "div",
+				id: "screen3Id",
+				class: ["screen2Class1"],
+				style: {
+					screen2Class1: ".screen2Class1 {display: flex; position: relative}",
+				},
+				size: { x: 600, y: 400 },
+				position: { x: 10, y: 20 },
 			},
-		},
-		{
-			serial: 2,
-			tagName: "span",
-			id: "hogeId",
-			class: ["hogeClass1", "hogeClass2"],
-			style: {
-				hogeClass1:
-					".hogeClass1 {display: block; position: absolute} .hogeClass1:hover { background: red;}",
-				hogeClass2:
-					".hogeClass2 {display: block; position:relative padding: 500px;} .hogeClass2::before { position: aboslute; background: red;}",
-			},
-			size: {
-				x: 500,
-				y: 4400,
-			},
-			position: {
-				x: 8,
-				y: 0,
-			},
-		},
-	],
-};
+		],
+	},
+];
 
 function extractCSSProperties(cssString) {
 	// ブラケット内のコンテンツのみを抽出
@@ -135,113 +138,121 @@ function formatDataForExcel(data) {
 	};
 }
 
-async function writeToExcel(templatePath, outputPath, data) {
+async function writeMultipleScreensToExcel(
+	templatePath,
+	outputPath,
+	screenDataList,
+	sheetNames = []
+) {
 	try {
 		const workbook = new ExcelJS.Workbook();
 		await workbook.xlsx.readFile(templatePath);
 
-		const worksheet = workbook.getWorksheet("Sheet1");
+		for (const [index, screenData] of screenDataList.entries()) {
+			// シート名の決定
+			const sheetName = sheetNames[index] || `Screen${index + 1}`;
 
-		// 既存データのクリーンアップを改善
-		if (worksheet.rowCount > 1) {
-			// 下から順番に行を削除（ヘッダー以外）
-			for (let i = worksheet.rowCount; i > 1; i--) {
-				worksheet.spliceRows(i, 1);
+			// シートの取得または作成
+			let worksheet = workbook.getWorksheet(sheetName);
+			if (!worksheet) {
+				worksheet = workbook.addWorksheet(sheetName);
 			}
 
-			// ワークシートのプロパティをリセット
-			worksheet.properties.outlineLevelRow = 0;
-			worksheet.properties.outlineLevelCol = 0;
-		}
-
-		// ヘッダー行のスタイルを再設定
-		const headerRow = worksheet.getRow(1);
-		headerRow.height = 30; // ヘッダーの高さを固定
-
-		for (const [index, header] of data.headers.entries()) {
-			const cell = headerRow.getCell(index + 1);
-			cell.value = header;
-			cell.fill = {
-				type: "pattern",
-				pattern: "solid",
-				fgColor: { argb: "FFE0E0E0" },
-			};
-			cell.border = {
-				top: { style: "thin" },
-				left: { style: "thin" },
-				bottom: { style: "thin" },
-				right: { style: "thin" },
-			};
-			cell.font = { bold: true };
-			cell.alignment = {
-				vertical: "middle",
-				horizontal: "center",
-				wrapText: true,
-			};
-		}
-
-		let currentSerial = null;
-		let rowColor = "FFFFFF";
-
-		// データ行の追加
-		for (const [rowIndex, row] of data.rows.entries()) {
-			if (row.serial && row.serial !== currentSerial) {
-				currentSerial = row.serial;
-				rowColor = rowColor === "FFFFFF" ? "F5F5F5" : "FFFFFF";
+			// 既存データのクリーンアップ
+			if (worksheet.rowCount > 0) {
+				worksheet.spliceRows(1, worksheet.rowCount);
 			}
 
-			const excelRow = worksheet.addRow([
-				row.serial,
-				row.tagName,
-				row.id,
-				row.className,
-				row.width,
-				row.height,
-				row.positionX,
-				row.positionY,
-				row.styleClass,
-				row.styleDefinition,
-			]);
+			// データをExcel形式に変換
+			const excelData = formatDataForExcel(screenData);
 
-			// 行の高さを固定
-			excelRow.height = 25;
+			// ヘッダー行の設定
+			const headerRow = worksheet.addRow(excelData.headers);
+			headerRow.height = 30;
 
-			for (const cell of excelRow._cells) {
-				if (!cell) continue;
-
+			for (const [colIndex, header] of excelData.headers.entries()) {
+				const cell = headerRow.getCell(colIndex + 1);
+				cell.fill = {
+					type: "pattern",
+					pattern: "solid",
+					fgColor: { argb: "FFE0E0E0" },
+				};
 				cell.border = {
 					top: { style: "thin" },
 					left: { style: "thin" },
 					bottom: { style: "thin" },
 					right: { style: "thin" },
 				};
-				cell.fill = {
-					type: "pattern",
-					pattern: "solid",
-					fgColor: { argb: rowColor },
+				cell.font = { bold: true };
+				cell.alignment = {
+					vertical: "middle",
+					horizontal: "center",
+					wrapText: true,
 				};
+			}
 
-				const columnName = data.headers[cell.col - 1];
-				if (["width", "height", "positionX", "positionY"].includes(columnName)) {
-					cell.alignment = { horizontal: "right", vertical: "middle" };
-				} else {
-					cell.alignment = {
-						horizontal: "left",
-						vertical: "middle",
-						wrapText: true,
+			// データ行の追加
+			let currentSerial = null;
+			let rowColor = "FFFFFF";
+
+			for (const [rowIndex, row] of excelData.rows.entries()) {
+				if (row.serial && row.serial !== currentSerial) {
+					currentSerial = row.serial;
+					rowColor = rowColor === "FFFFFF" ? "F5F5F5" : "FFFFFF";
+				}
+
+				const excelRow = worksheet.addRow([
+					row.serial,
+					row.tagName,
+					row.id,
+					row.className,
+					row.width,
+					row.height,
+					row.positionX,
+					row.positionY,
+					row.styleClass,
+					row.styleDefinition,
+				]);
+
+				excelRow.height = 25;
+
+				for (const cell of excelRow._cells) {
+					if (!cell) continue;
+
+					cell.border = {
+						top: { style: "thin" },
+						left: { style: "thin" },
+						bottom: { style: "thin" },
+						right: { style: "thin" },
 					};
+					cell.fill = {
+						type: "pattern",
+						pattern: "solid",
+						fgColor: { argb: rowColor },
+					};
+
+					const columnName = excelData.headers[cell.col - 1];
+					if (["width", "height", "positionX", "positionY"].includes(columnName)) {
+						cell.alignment = { horizontal: "right", vertical: "middle" };
+					} else {
+						cell.alignment = {
+							horizontal: "left",
+							vertical: "middle",
+							wrapText: true,
+						};
+					}
 				}
 			}
-		}
 
-		// 列幅の自動調整
-		for (const column of worksheet.columns) {
-			let maxLength = 0;
-			column.eachCell({ includeEmpty: true }, (cell) => {
-				const columnLength = cell.value ? cell.value.toString().length : 10;
-				maxLength = Math.max(maxLength, columnLength);
-			});
-			column.width = Math.min(maxLength + 2, 50);
+			// 列幅の自動調整
+			for (const column of worksheet.columns) {
+				let maxLength = 0;
+				column.eachCell({ includeEmpty: true }, (cell) => {
+					const columnLength = cell.value ? cell.value.toString().length : 10;
+					maxLength = Math.max(maxLength, columnLength);
+				});
+				column.width = Math.min(maxLength + 2, 50);
+			}
 		}
 
 		await workbook.xlsx.writeFile(outputPath);
@@ -252,14 +263,20 @@ async function writeToExcel(templatePath, outputPath, data) {
 	}
 }
 
-// 使用例
-const templatePath = "./sample.xlsx"; // 既存のExcelファイルパス
-const outputPath = "./output.xlsx"; // 出力先のファイルパス
+// const asdf = screenDataList.map((node) => console.log(node));
 
-// 先ほどの整形関数で作成したデータを使用
-const excelData = formatDataForExcel(data);
+function getSheetNames(list) {
+	return list.map((item) => item.node[0].id);
+}
 
-// Excelファイルに書き込み
-writeToExcel(templatePath, outputPath, excelData)
-	.then(() => console.log("処理が完了しました"))
+const sheetNames = getSheetNames(screenDataList);
+
+// シート名を指定して実行
+writeMultipleScreensToExcel(
+	"./sample.xlsx",
+	"./output.xlsx",
+	screenDataList,
+	sheetNames
+)
+	.then(() => console.log("すべての画面データの書き込みが完了しました"))
 	.catch((error) => console.error("エラーが発生しました:", error));
