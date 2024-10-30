@@ -3,7 +3,7 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-	root: "pages/",
+	root: "web/",
 	server: {
 		port: 5050,
 	},
